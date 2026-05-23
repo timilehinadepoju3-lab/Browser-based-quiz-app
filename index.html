@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BrainBurst Trivia Quiz</title>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-primary: #6366f1;
+      --accent-hover: #4f46e5;
+      --success-color: #10b981;
+      --error-color: #ef4444;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --font-sans: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 650px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Screen Management & Transitions */
+    .screen {
+      display: none;
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1, h2, h3 {
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Common UI Elements */
+    .form-group {
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    input, select {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn {
+      background: var(--accent-primary);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 100%;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    /* Quiz Layout & Header components */
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .timer-badge {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--error-color);
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      background: rgba(255, 255, 255, 0.1);
+      height: 8px;
+      border-radius: 4px;
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      background: var(--accent-primary);
+      height: 100%;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .question-box {
+      font-size: 1.3rem;
+      line-height: 1.4;
+      margin-bottom: 2rem;
+    }
+
+    /* Options Grid Layout */
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .option-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 1.2rem;
+      border-radius: 10px;
+      text-align: left;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .option-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--text-muted);
+      transform: translateX(4px);
+    }
+
+    /* Feedback Colors */
+    .option-btn.correct {
+      background: rgba(16, 185, 129, 0.2) !important;
+      border-color: var(--success-color) !important;
+      color: white;
+      font-weight: 600;
+    }
+
+    .option-btn.wrong {
+      background: rgba(239, 64, 64, 0.2) !important;
+      border-color: var(--error-color) !important;
+      color: white;
+    }
+
+    /* Results Screen Leaderboard elements */
+    .score-display {
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--accent-primary);
+      margin: 1.5rem 0;
+      text-align: center;
+    }
+
+    .leaderboard {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .leaderboard-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .leaderboard-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+      font-size: 0.95rem;
+    }
+
+    /* Review Screen Layout */
+    .review-container {
+      max-height: 380px;
+      overflow-y: auto;
+      margin-bottom: 1.5rem;
+      padding-right: 0.5rem;
+    }
+
+    .review-card {
+      background: rgba(0, 0, 0, 0.15);
+      border-left: 4px solid var(--border-color);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .review-card.correct-status { border-left-color: var(--success-color); }
+    .review-card.wrong-status { border-left-color: var(--error-color); }
+
+    .review-q { font-weight: 600; margin-bottom: 0.5rem; font-size: 1rem; }
+    .review-ans { font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .review-ans span { font-weight: bold; }
+
+    .action-row {
+      display: flex;
+      gap: 1rem;
+    }
+
+    /* Webkit scrollbar customization */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+
+    @media (max-width: 480px) {
+      .container { padding: 1.5rem; }
+      .quiz-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .action-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- WELCOME / INITIAL CONFIG SCREEN -->
+    <div id="welcome-screen" class="screen active">
+      <h1>BrainBurst Trivia</h1>
+      <p>Test your knowledge with live, dynamically pulled questions.</p>
+      
+      <div class="form-group">
+        <label for="username">Your Profile Name</label>
+        <input type="text" id="username" placeholder="Enter username..." maxlength="15">
+      </div>
+
+      <div class="form-group">
+        <label for="category-select">Choose Topic</label>
+        <select id="category-select">
+          <option value="9">General Knowledge</option>
+          <option value="11">Movies & Film</option>
+          <option value="12">Music</option>
+          <option value="15">Video Games</option>
+          <option value="17">Science & Nature</option>
+          <option value="23">History</option>
+        </select>
+      </div>
+
+      <button class="btn" id="start-btn">Launch Quiz</button>
+    </div>
+
+    <!-- PLAYING QUIZ DISPLAY SCREEN -->
+    <div id="quiz-screen" class="screen">
+      <div class="quiz-header">
+        <span id="question-counter" class="label">Question 1/10</span>
+        <div class="timer-badge">Time Left: <span id="timer-sec">15</span>s</div>
+      </div>
+      
+      <div class="progress-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+
+      <h2 id="question-text" class="question-box">Loading matching core statement...</h2>
+      
+      <div id="options-box" class="options-grid">
+        <!-- Javascript dynamic option buttons go here -->
+      </div>
+
+      <button class="btn" id="next-btn" style="display: none;">Continue</button>
+    </div>
+
+    <!-- SCORE SUMMARY DISPLAY SCREEN -->
+    <div id="result-screen" class="screen">
+      <h2>Quiz Finished!</h2>
+      <p id="completion-msg">Great job completing the challenge track.</p>
+      
+      <div class="score-display"><span id="final-score">0</span>/10</div>
+      
+      <div class="leaderboard">
+        <div class="leaderboard-title">Local High Scores</div>
+        <div id="leaderboard-content"></div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn" id="go-review-btn">Review Work</button>
+        <button class="btn" id="restart-btn" style="background: rgba(255,255,255,0.1);">Main Menu</button>
+      </div>
+    </div>
+
+    <!-- DETAILED WORK REVIEW SCREEN -->
+    <div id="review-screen" class="screen">
+      <h2>Performance Review</h2>
+      <p>Analyze your answers and master the correct context details.</p>
+
+      <div id="review-list" class="review-container">
+        <!-- Review cards are contextually added here -->
+      </div>
+
+      <button class="btn" id="review-exit-btn">Back to Menu</button>
+    </div>
+
+  </div>
+
+  <script>
+    // --- STATE VARIABLE HOLDERS ---
+    let username = "Player 1";
+    let questions = [];
+    let currentIndex = 0;
+    let score = 0;
+    let timerInterval = null;
+    let timeLeft = 15;
+    let reviewTrackData = []; // Keeps path mapping history: { question, choices, selectedIndex, correctIndex }
+
+    // Fallback question data array to catch edge cases if API connectivity gets broken
+    const localFallbackPool = [
+      {
+        question: "Which of the following computer components is primarily responsible for execution processing math operations?",
+        correct_answer: "CPU",
+        incorrect_answers: ["RAM", "Hard Drive", "Graphics Card"]
+      },
+      {
+        question: "The chemical symbol 'Au' maps directly onto which elemental metallic matrix resource?",
+        correct_answer: "Gold",
+        incorrect_answers: ["Silver", "Iron", "Copper"]
+      }
+    ];
+
+    // --- DOM LOCATORS ---
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultScreen = document.getElementById('result-screen');
+    const reviewScreen = document.getElementById('review-screen');
+
+    const usernameInput = document.getElementById('username');
+    const categorySelect = document.getElementById('category-select');
+    const startBtn = document.getElementById('start-btn');
+    
+    const questionCounter = document.getElementById('question-counter');
+    const timerSec = document.getElementById('timer-sec');
+    const progressBar = document.getElementById('progress-bar');
+    const questionText = document.getElementById('question-text');
+    const optionsBox = document.getElementById('options-box');
+    const nextBtn = document.getElementById('next-btn');
+
+    const finalScoreEl = document.getElementById('final-score');
+    const completionMsg = document.getElementById('completion-msg');
+    const leaderboardContent = document.getElementById('leaderboard-content');
+    
+    // --- UTILITY LOGIC ENGINES ---
+    
+    // Decodes special HTML strings returned by OpenTDB safely (e.g. &quot; -> ")
+    function decodeHtmlEntities(rawStr) {
+      const doc = document.createElement('textarea');
+      doc.innerHTML = rawStr;
+      return doc.value;
+    }
+
+    // Fisher-Yates element structural array shuffler logic
+    function shuffleArray(targetArray) {
+      const arr = [...targetArray];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function switchScreen(targetScreen) {
+      [welcomeScreen, quizScreen, resultScreen, reviewScreen].forEach(s => s.classList.remove('active'));
+      targetScreen.classList.add('active');
+    }
+
+    // --- CORE PROCESSING CONTROLLERS ---
+
+    async function initializeQuizFetch() {
+      username = usernameInput.value.trim() || "Player 1";
+      const catId = categorySelect.value;
+      
+      switchScreen(quizScreen);
+      questionText.innerText = "Sourcing fresh dynamic questions from remote database...";
+      optionsBox.innerHTML = '';
+      nextBtn.style.display = 'none';
+
+      try {
+        const fetchTarget = `https://opentdb.com/api.php?amount=10&category=${catId}&type=multiple`;
+        const res = await fetch(fetchTarget);
+        if (!res.ok) throw new Error('Network failure');
+        const data = await res.json();
+        
+        if(data.results && data.results.length > 0) {
+          questions = data.results.map(q => ({
+            question: decodeHtmlEntities(q.question),
+            correctAnswer: decodeHtmlEntities(q.correct_answer),
+            options: shuffleArray([...q.incorrect_answers, q.correct_answer].map(o => decodeHtmlEntities(o)))
+          }));
+        } else {
+          throw new Error('Empty context payload');
+        }
+      } catch (err) {
+        // Safe fall back configuration mapping if remote database request throws error
+        questions = localFallbackPool.map(q => ({
+          question: q.question,
+          correctAnswer: q.correct_answer,
+          options: shuffleArray([...q.incorrect_answers, q.correct_answer])
+        }));
+      }
+
+      currentIndex = 0;
+      score = 0;
+      reviewTrackData = [];
+      renderActiveQuestion();
+    }
+
+    function renderActiveQuestion() {
+      clearInterval(timerInterval);
+      nextBtn.style.display = 'none';
+      timeLeft = 15;
+      timerSec.innerText = timeLeft;
+
+      // Track running progression dimensions
+      const activeQ = questions[currentIndex];
+      questionCounter.innerText = `Question ${currentIndex + 1}/${questions.length}`;
+      progressBar.style.width = `${((currentIndex) / questions.length) * 100}%`;
+      questionText.innerText = activeQ.question;
+      
+      optionsBox.innerHTML = '';
+      activeQ.options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerText = opt;
+        btn.addEventListener('click', () => evaluateChoice(index));
+        optionsBox.appendChild(btn);
+      });
+
+      // Initiate processing countdown track tick rate
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerSec.innerText = timeLeft;
+        if(timeLeft <= 0) {
+          clearInterval(timerInterval);
+          evaluateChoice(-1); // Process timeout outcome state
+        }
+      }, 1000);
+    }
+
+    function evaluateChoice(pickedIndex) {
+      clearInterval(timerInterval);
+      const activeQ = questions[currentIndex];
+      const buttons = optionsBox.querySelectorAll('.option-btn');
+      const correctIndex = activeQ.options.indexOf(activeQ.correctAnswer);
+
+      // Disable layout click paths to prevent mutation inputs
+      buttons.forEach(btn => btn.disabled = true);
+
+      if (pickedIndex === correctIndex) {
+        score++;
+        buttons[pickedIndex].classList.add('correct');
+      } else {
+        if (pickedIndex !== -1) {
+          buttons[pickedIndex].classList.add('wrong');
+        }
+        // Always surface where the true answer point lives
+        buttons[correctIndex].classList.add('correct');
+      }
+
+      // Catalog performance mapping history data
+      reviewTrackData.push({
+        question: activeQ.question,
+        choices: activeQ.options,
+        selectedIndex: pickedIndex,
+        correctIndex: correctIndex
+      });
+
+      nextBtn.style.display = 'block';
+    }
+
+    function advanceQuizFlow() {
+      currentIndex++;
+      if(currentIndex < questions.length) {
+        renderActiveQuestion();
+      } else {
+        progressBar.style.width = '100%';
+        displayResultsSummary();
+      }
+    }
+
+    function displayResultsSummary() {
+      switchScreen(resultScreen);
+      finalScoreEl.innerText = score;
+      
+      const successRate = (score / questions.length) * 100;
+      if (successRate >= 70) {
+        completionMsg.innerText = `Fantastic performance, ${username}! You passed with flying colors.`;
+      } else {
+        completionMsg.innerText = `Keep learning, ${username}. Try reviewing the material and rerun this set!`;
+      }
+
+      saveAndRenderLeaderboard();
+    }
+
+    // --- LOCAL STORAGE DATA MANAGERS ---
+    function saveAndRenderLeaderboard() {
+      let highScores = JSON.parse(localStorage.getItem('brainburst_scores')) || [];
+      
+      // Merge current attempt records
+      highScores.push({ name: username, scoreValue: score, stamp: new Date().toLocaleDateString() });
+      // Sort structural records highest-first, cap array collection records tracking at 5 rows
+      highScores.sort((a, b) => b.scoreValue - a.scoreValue);
+      highScores = highScores.slice(0, 5);
+      
+      localStorage.setItem('brainburst_scores', JSON.stringify(highScores));
+
+      leaderboardContent.innerHTML = '';
+      highScores.forEach(row => {
+        leaderboardContent.innerHTML += `
+          <div class="leaderboard-row">
+            <span><strong>${row.name}</strong> (${row.stamp})</span>
+            <span>${row.scoreValue}/10</span>
+          </div>
+        `;
+      });
+    }
+
+    function processReviewLayout() {
+      switchScreen(reviewScreen);
+      const listTarget = document.getElementById('review-list');
+      listTarget.innerHTML = '';
+
+      reviewTrackData.forEach((item, index) => {
+        const isCorrect = item.selectedIndex === item.correctIndex;
+        const card = document.createElement('div');
+        card.className = `review-card ${isCorrect ? 'correct-status' : 'wrong-status'}`;
+        
+        const selectionText = item.selectedIndex === -1 ? 'Time Expired Out' : item.choices[item.selectedIndex];
+        
+        card.innerHTML = `
+          <div class="review-q">#${index + 1}: ${item.question}</div>
+          <div class="review-ans" style="color: ${isCorrect ? 'var(--success-color)' : 'var(--error-color)'}">
+            <span>Your Choice:</span> ${selectionText}
+          </div>
+          ${!isCorrect ? `<div class="review-ans" style="color: var(--success-color)"><span>Correct Answer:</span> ${item.choices[item.correctIndex]}</div>` : ''}
+        `;
+        listTarget.appendChild(card);
+      });
+    }
+
+    // --- BIND EVENT HANDLERS ---
+    startBtn.addEventListener('click', initializeQuizFetch);
+    nextBtn.addEventListener('click', advanceQuizFlow);
+    goReviewBtn = document.getElementById('go-review-btn').addEventListener('click', processReviewLayout);
+    
+    const bounceToMain = () => switchScreen(welcomeScreen);
+    document.getElementById('restart-btn').addEventListener('click', bounceToMain);
+    document.getElementById('review-exit-btn').addEventListener('click', bounceToMain);
+
+    // Support entering key tracking shortcuts
+    usernameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') initializeQuizFetch();
+    });
+  </script>
+</body>
+</html>
